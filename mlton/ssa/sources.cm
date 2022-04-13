@@ -64,6 +64,7 @@ contify.fun
 deep-flatten.fun
 duplicate-globals.fun
 flatten.fun
+equality-saturation.fun
 inline.sig
 inline.fun
 introduce-loops.fun

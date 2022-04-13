@@ -53,6 +53,7 @@ local
    contify.fun
    deep-flatten.fun
    duplicate-globals.fun
+   equality-saturation.fun
    flatten.fun
    inline.sig
    inline.fun

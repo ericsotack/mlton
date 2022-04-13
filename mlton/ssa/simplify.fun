@@ -19,6 +19,7 @@ structure CombineConversions = CombineConversions (S)
 structure ConstantPropagation = ConstantPropagation (S)
 structure Contify = Contify (S)
 structure DuplicateGlobals = DuplicateGlobals (S)
+structure EqualitySaturation = EqualitySaturation (S)
 structure Flatten = Flatten (S)
 structure Inline = Inline (S)
 structure IntroduceLoops = IntroduceLoops (S)
@@ -80,6 +81,7 @@ val ssaPassesDefault =
     *)
    {name = "polyHash", doit = PolyHash.transform, execute = true} ::
    {name = "introduceLoops2", doit = IntroduceLoops.transform, execute = true} ::
+   {name = "equalitySaturate", doit = EqualitySaturation.transform, execute = true} ::
    {name = "loopInvariant2", doit = LoopInvariant.transform, execute = true} ::
    (* loopUnswitch should run
     *   - after loop invariant code motion so invariant conditions are obvious
@@ -227,6 +229,7 @@ local
                  ("constantPropagation", ConstantPropagation.transform),
                  ("contify", Contify.transform),
                  ("duplicateGlobals", DuplicateGlobals.transform),
+                 ("equalitySaturate", EqualitySaturation.transform),
                  ("flatten", Flatten.transform),
                  ("introduceLoops", IntroduceLoops.transform),
                  ("knownCase", KnownCase.transform),
