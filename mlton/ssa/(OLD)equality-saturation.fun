@@ -18,8 +18,8 @@ open Exp Transfer
 type id = int
 
 (* These identify the different operators a node can have *)
-structure Oper =
-   struct
+structure Oper:
+   sig
       datatype t =
          Bottom
        | Eval
@@ -30,12 +30,13 @@ structure Oper =
        | Tuple
        | Select of int
        | PrimApp of Prim.t
-       (* possibly add in stateful PrimApps? *)
+       (* TODO possibly add in stateful PrimApps?*)
        (*
        | PrimAppPure of Prim.t
        | PrimAppR of Prim.t
        | PrimAppRW of Prim.t
        *)
+       (* FEG specific things *)
        | Identity
        | Param of Var.t
        | InitState
@@ -56,77 +57,30 @@ structure Oper =
        | DeCon of Con.t * int
        | RhoState
        | RhoResult
-      
-      fun layout oper =
-         let
-            open Layout
-         in
-            case oper of
-               Bottom => str "Bottom"
-             | Eval => str "Eval"
-             | Pass => str "Pass"
-             | Theta => str "Theta"
-             | Const c => seq [str "Const", str " ", Const.layout c]
-             | ConApp con => seq [str "ConApp", str " ", Con.layout con]
-             | Tuple => str "Tuple"
-             | Select i => seq [str "Select", str " ", str (Int.toString i)]
-             | PrimApp prim => seq [str "PrimApp", str " ", Prim.layout prim]
-             | Identity => str "Identity"
-             | Param var => seq [str "Param", str " ", Var.layout var]
-             | InitState => str "InitState"
-             | Call func => seq [str "Call", str " ", Func.layout func]
-             | Return => str "Return"
-             | Raise => str "Raise"
-             | Exit => str "Exit"
-             | CPhi => str "CPhi"
-             | CMDefault => str "CMDefault"
-             | CMCons con => seq [str "CMCons", str " ", Con.layout con]
-             | WPhi => str "WPhi"
-             | WMDef => str "WMDef"
-             | WMCons wordx => seq [str "WMCons", str " ", WordX.layout (wordx, {suffix=true})]
-             | ExtractReturn i => seq[str "ExtractReturn", str " ", str (Int.toString i)]
-             | ExtractException i => seq[str "ExtractException", str " ", str (Int.toString i)]
-             | IsReturn => str "IsReturn"
-             | IsException => str "IsException"
-             | DeCon (con, i) => seq [str "DeCon", str " ", Con.layout con, str " ", str (Int.toString i)]
-             | RhoState => str "RhoState"
-             | RhoResult => str "RhoResult"
-         end
    end
 
-structure ExpNode =
-   struct
+structure ExpNode:
+   sig
       datatype t = T of {oper: Oper.t,
                          children: id vector}
 
       fun new0 oper = T {oper = oper, children = Vector.new0 ()}
       fun new1 (oper, child) = T {oper = oper, children = Vector.new1 child}
-      fun layout' layoutChild en =
-         let
-            open Layout
-            fun layoutChildren cs = Vector.layout layoutChild cs
-         in
-            case en of
-               T {oper, children} => seq [str "(", Oper.layout oper, str ")", str ", ", layoutChildren children]
-         end
-      fun layout en = layout' (fn i => str (Int.toString i)) en
    end
 
-structure Feg =
-   struct
+structure Feg: 
+   sig
       datatype t = T of (int * ExpNode.t) vector
-      fun layout f =
-         let
-            open Layout
-            fun layoutItem (i, node) = seq [str "{", str "idx: ", str (Int.toString i), str ", node: ", ExpNode.layout node, str "}"]
-         in
-            case f of
-               T nodes => Vector.layout layoutItem nodes
-         end
    end
 
 fun transform (Program.T {globals, datatypes, functions, main}) =
    let
+      fun leastDominatorThrough () (): () =
+         ()
+
+      fun decide () () () (): () =
+         ()
+
       fun transFunction (f: Function.t) : Feg.t =
          let
             val nextNodeId = let val ctr = Counter.new 0 in fn () => Counter.next ctr end
@@ -140,13 +94,13 @@ fun transform (Program.T {globals, datatypes, functions, main}) =
                Property.getSetOnce(Var.plist, Property.initRaise ("EqualitySat.varInfo"))
 
             val {get = labelInfo: Label.t -> {passNode: id option},
-               set = setLabelInfo, ...} =
+               set = setLabelfo, ...} =
                Property.getSetOnce(Label.plist, Property.initRaise ("EqualitySat.labelInfo"))
 
             fun varNodeIdAt (x, ls) = #nodeIdAt (varInfo x) ls
             val lf: Block.T DirectedGraph.LoopForest.t =
                let val {graph, labelNode, nodeBlock} = Function.controlFlow f
-               in DirectedGraph.loopForestSteensgaard (graph, {root = labelNode start, nodeValue = nodeBlock})
+               in DirectedGraph.loopForestSteensgaard (graph, {start = labelNode start, nodeValue = nodeBlock})
                end
             val setVarInfo = fn (x, ls_def) =>
                let
@@ -188,7 +142,7 @@ fun transform (Program.T {globals, datatypes, functions, main}) =
             val _ = setVarInfoLoop (lf, [])
 
             fun transVar (var: Var.t, ls: Label.t list) : int =
-               varNodeAt (var, ls)
+               varNodeAt (arg, ls)
             fun transVars (vars: Var.t vector, ls: Label.t list) : int vector =
                Vector.map (vars, fn var => transVar (var, ls))
             fun transExp (exp: Exp.t, ls: Label.t list) : ExpNode.t =
@@ -199,7 +153,7 @@ fun transform (Program.T {globals, datatypes, functions, main}) =
                 | Const c =>
                      ExpNode.new0 (Oper.Const c)
                 | PrimApp {prim, targs, args} =>
-                     ExpNode.T {oper = Oper.PrimApp prim,
+                     ExpNode.T {oper = Oper.ConApp con,
                                 children = transVars (args, ls)}
                 | Profile _ => Error.bug "EqualitySaturation.transExp: Profile"
                 | Tuple args =>
@@ -211,9 +165,9 @@ fun transform (Program.T {globals, datatypes, functions, main}) =
                 | Var arg =>
                      ExpNode.T {oper = Oper.Identity,
                                 children = Vector.new1 (transVar (arg, ls))}
-            fun addNodeStatement (stmt: Statement.t, ls: Label.t list) : unit =
+            fun addNodeStatement (stmt: Statement.t ls: Label.t list) : unit =
                let
-                  val Statement.T {var, exp, ...} = stmt
+                  val Statement.T {var, exp, ...} stmt
                in
                   case var of
                      NONE => ()
@@ -251,7 +205,15 @@ fun transform (Program.T {globals, datatypes, functions, main}) =
             Feg.T (Vector.fromList (!nodes))
          end
 
-      val _ = () (* TODO: for function in program, make FEG and output it *)
+      fun transStatement (nodes: ExpNode.t list) (st: Statement.t): (int * ExpNode.t list) =
+         (* input: list of preexisting nodes to allow transExp, statement to be trans
+          * output: ind of newly added node and updated list of ndoe
+          *)
+         case st of
+            Statement {exp, ty, var} =>
+               case var of
+                  NONE => () (* still need to keep it around for side effects on state *)
+                | SOME var => () (* side effects and updated map aka store it in the Property*)
    in
       Program.T {globals = globals,
                  datatypes = datatypes,
